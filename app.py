@@ -7,7 +7,7 @@ app = Flask(__name__)
 scraper = config.scraper_app
 
 @app.route('/extractor-app', methods=['POST'])
-def app():
+def get_info():
     data = request.json
     if not data or 'url' not in data:
         return jsonify({'error': 'No URL provided'}), 400

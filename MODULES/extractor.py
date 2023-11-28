@@ -2,7 +2,7 @@ import re
 from transformers import pipeline  
 
 def extract_email(content):
-    email_regex = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
+    email_regex = r"+"
     emails = re.findall(email_regex, content)
     return emails
 
@@ -10,7 +10,7 @@ def extract_office_locations(content):
     pass
 
 def extract_phone_numbers(content):
-    phone_regex = r"your_phone_number_regex_pattern"
+    phone_regex = r""
     phone_numbers = re.findall(phone_regex, content)
     return phone_numbers
 

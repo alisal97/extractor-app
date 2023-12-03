@@ -12,7 +12,7 @@ def get_info():
     if not data or 'url' not in data:
         return jsonify({'error': 'No URL provided'}), 400
 
-    response = requests.post(scraper    , json={'url': data['url']})
+    response = requests.post(scraper, json={'url': data['url']})
 
     if response.status_code == 200:
         scraped_data = response.json()

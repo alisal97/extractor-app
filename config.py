@@ -1,6 +1,5 @@
 port = 5007
-scraper_app = "localhost:5005/scraper-app"
-
+scraper_app = "http://127.0.0.1:5005/scraper-app"
 
 emails = "E-mails"
 locations = "Locations"

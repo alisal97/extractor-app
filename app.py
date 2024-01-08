@@ -9,6 +9,8 @@ scraper = config.scraper_app
 @app.route('/extractor-app', methods=['POST'])
 def get_info():
     data = request.json
+    app.logger.info(f"Received data: {data}")
+    
     if not data or 'urls' not in data:
         return jsonify({'error': 'No URLs provided'}), 400
 
@@ -16,16 +18,18 @@ def get_info():
     for url in data['urls']:
         response = requests.post(scraper, json={'url': url})
         
-        if response.status_code == 200:
-            scraped_data = response.json()
-            scraped_url = scraped_data['url']
-            result = {
-                config.name: extract_company_name(scraped_url[0]),
-                config.profile: extractor(scraped_data)
-            }
-            results.append(result)
-        else:
-            return jsonify({'error': 'Error from scraper service'}), response.status_code
+    if response.status_code == 200:
+        scraped_data = response.json()
+        scraped_url = scraped_data['url']
+        result = {
+            config.name: extract_company_name(scraped_url[0]),
+            config.profile: extractor(scraped_data)
+        }
+        results.append(result)
+    else:
+        app.logger.error(f"Error from scraper service. Status Code: {response.status_code}, Content: {response.text}")
+        return jsonify({'error': 'Error from scraper service'}), response.status_code
+
 
     return jsonify(results), 200
 

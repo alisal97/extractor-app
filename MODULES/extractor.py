@@ -2,26 +2,45 @@ import re
 from transformers import pipeline  
 import config
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForTokenClassification
+import phonenumbers
 
 
 def extract_email(content):
-    email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
     emails = re.findall(email_regex, content)
     return emails
 
+def extract_locations(text):
+    tokenizer = AutoTokenizer.from_pretrained("ml6team/bert-base-uncased-city-country-ner")
+    model = AutoModelForTokenClassification.from_pretrained("ml6team/bert-base-uncased-city-country-ner")
+    nlp = pipeline('ner', model=model, tokenizer=tokenizer, aggregation_strategy="simple")
 
-def extract_office_locations(content):
-    pattern = re.compile(r'\b\d{1,5}\s+[\w\s]+\b,\s*[\w\s]+\b,\s*\d{5}\s*[\w\s]+\b|\b\d{1,5}\s+[\w\s]+\b,\s*\d{5}\b')
-
-    matches = re.findall(pattern, content)
-
-    return matches
+    chunks = [text[i:i+256] for i in range(0, len(text), 512)]
+    
+    unique_cities = set()
+    for chunk in chunks:
+        output = nlp(chunk)
+        city = ""
+        for entity in output:
+            if entity['entity_group'] == "CITY" and entity['score'] >= 0.99:
+                city = entity['word']
+                unique_cities.add(city)
+    print(unique_cities)
+    return list(unique_cities)
 
 def extract_phone_numbers(content):
-    phone_regex = r'\b(?:\+\d{1,2}\s?)?(?:(?:\(\d{1,4}\))|(?:\d{1,4}))[-.\s]?\d{1,12}\b'
-    phone_numbers = re.findall(phone_regex, content)
-    return phone_numbers
+    phone_numbers = []
+
+    for match in phonenumbers.PhoneNumberMatcher(content, "IT"):
+        phone_number = phonenumbers.format_number(match.number, phonenumbers.PhoneNumberFormat.E164)
+        phone_numbers.append(phone_number)
+
+    if phone_numbers:
+        return phone_numbers
+    else:
+        return None
+
 
 def extract_sector(content):
     tokenizer = AutoTokenizer.from_pretrained("MKaan/multilingual-cpv-sector-classifier")
@@ -57,7 +76,7 @@ def extract_sector(content):
     return predicted_sector
 
 def extract_company_name(url):
-    company_name_regex = r'www\.([a-zA-Z0-9-]+)\.(com|net|org|gov|edu|info|biz|co)'
+    company_name_regex = r'www\.([a-zA-Z0-9-]+)\.(eu|it|com|net|org|gov|edu|info|biz|co)'
     match = re.search(company_name_regex, url)
     if match:
         return match.group(1)
@@ -65,17 +84,21 @@ def extract_company_name(url):
         return None
 
 def extract_social_media_links(content):
-    social_media_regex = (
-        r'https?://(?:www\.)?(?:facebook|twitter|instagram|linkedin)\.com/[a-zA-Z0-9_]+/?'
-    )
-    links = re.findall(social_media_regex, content)
-    return links
+    social_media_links = set()
+
+    pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+/[-\w./?=&]+'
+    matches = re.findall(pattern, content)
+    for match in matches:
+        if 'facebook.com' in match or 'linkedin.com' in match or 'instagram.com' in match:
+            social_media_links.add(match)
+
+    return list(social_media_links)
 
 def extractor(scraped_content):
     extracted_info = {
-        config.emails: extract_email(scraped_content),
-        config.locations: extract_office_locations(scraped_content),
-        config.phone_number: extract_phone_numbers(scraped_content),
-        config.socials: extract_social_media_links(scraped_content),
+        config.emails: extract_email(scraped_content) or [],
+        config.locations: extract_locations(scraped_content),
+        config.phone_number: extract_phone_numbers(scraped_content) or [],
+        config.socials: set(extract_social_media_links(scraped_content)),
     }
     return extracted_info

@@ -1,10 +1,12 @@
 from flask import Flask, json, request, jsonify
 import requests
 import config
+from collections import defaultdict
 from MODULES.extractor import extractor, extract_company_name, extract_sector
 app = Flask(__name__)
 
 scraper = config.scraper_app
+
 
 @app.route('/extractor-app', methods=['POST'])
 def get_info():
@@ -14,7 +16,7 @@ def get_info():
     if not data or 'urls' not in data:
         return jsonify({'error': 'No URLs provided'}), 400
 
-    results = []
+    consolidated_results = defaultdict(dict)
     for url in data['urls']:
         response = requests.post(scraper, json={'urls': [url]})
         
@@ -24,18 +26,51 @@ def get_info():
                 content = scraped_data.get('content')
                 content = str(content)  
                 if content:
-                    results.append({
-                        config.name: extract_company_name(scraped_data['url']),
-                        config.sector: extract_sector(content),
-                        config.profile: extractor(content)
-                    })
+                    company_name = extract_company_name(scraped_data['url']) 
+                    sector = extract_sector(content)
+                    profile_data = extractor(content)
+
+                    # Ensure no duplicates in extracted data
+                    if 'E-mails' not in consolidated_results[url]:
+                        consolidated_results[url]['E-mails'] = set()
+                    consolidated_results[url]['E-mails'].update(profile_data.get(config.emails, []))
+
+                    if 'Social Media Links' not in consolidated_results[url]:
+                        consolidated_results[url]['Social Media Links'] = set()
+                    consolidated_results[url]['Social Media Links'].update(profile_data.get(config.socials, []))
+
+                    if 'Phone Numbers' not in consolidated_results[url]:
+                        consolidated_results[url]['Phone Numbers'] = set()
+                    consolidated_results[url]['Phone Numbers'].update(profile_data.get(config.phone_number, []))
+
+                    if 'Locations' not in consolidated_results[url]:
+                        consolidated_results[url]['Locations'] = set()
+                    consolidated_results[url]['Locations'].update(profile_data.get(config.locations, []))
+
+
+                    # Merge other data without checking for duplicates
+                    consolidated_results[url].setdefault(config.name, company_name)
+                    consolidated_results[url].setdefault(config.sector, sector)
                 else:
                     app.logger.warning("Content not found in scraped data")
         else:
             app.logger.error(f"Error from scraper service. Status Code: {response.status_code}, Content: {response.text}")
             return jsonify({'error': 'Error from scraper service'}), response.status_code
-    return jsonify(results), 200
-
+        
+    # Convert sets to lists for JSON serialization
+    for url, data in consolidated_results.items():
+        if 'E-mails' in data:
+            data['E-mails'] = list(data['E-mails'])
+        if 'Social Media Links' in data:
+            data['Social Media Links'] = list(data['Social Media Links'])
+        if 'Phone Numbers' in data:
+            data['Phone Numbers'] = list(data['Phone Numbers'])
+        if 'Locations' in data:
+            data['Locations'] = list(data['Locations'])
+            
+    # Convert the consolidated results to a list for the final response
+    results_list = [{'url': url, **data} for url, data in consolidated_results.items()]
+    return jsonify(results_list), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=config.port)

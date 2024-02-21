@@ -46,30 +46,24 @@ def extract_sector(content):
     tokenizer = AutoTokenizer.from_pretrained("MKaan/multilingual-cpv-sector-classifier")
     model = AutoModelForSequenceClassification.from_pretrained("MKaan/multilingual-cpv-sector-classifier")
 
-    # Split content into chunks of 512 characters
     chunk_size = 512
     chunks = [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
 
     max_accuracy = -1
     predicted_sector = 'Unknown'
 
-    # Iterate over each chunk and predict the sector
     for chunk in chunks:
         inputs = tokenizer(chunk, return_tensors="pt", truncation=True, max_length=512)
         outputs = model(**inputs)
         logits = outputs.logits
 
-        # Get the predicted label index
         predicted_label_index = logits.argmax().item()
 
-        # Get the confidence score (softmax probability) for the predicted label
         confidence_score = torch.softmax(logits, dim=1)[0][predicted_label_index].item()
 
-        # Check if this chunk has higher accuracy than the previous ones
         if confidence_score > max_accuracy:
             max_accuracy = confidence_score
 
-            # Map the label index to the actual sector (modify as needed)
             label_mapping = config.sector_labels
             predicted_sector = label_mapping.get(predicted_label_index, 'Unknown')
 

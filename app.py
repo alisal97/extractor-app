@@ -30,7 +30,6 @@ def get_info():
                     sector = extract_sector(content)
                     profile_data = extractor(content)
 
-                    # Ensure no duplicates in extracted data
                     if 'E-mails' not in consolidated_results[url]:
                         consolidated_results[url]['E-mails'] = set()
                     consolidated_results[url]['E-mails'].update(profile_data.get(config.emails, []))
@@ -48,7 +47,6 @@ def get_info():
                     consolidated_results[url]['Locations'].update(profile_data.get(config.locations, []))
 
 
-                    # Merge other data without checking for duplicates
                     consolidated_results[url].setdefault(config.name, company_name)
                     consolidated_results[url].setdefault(config.sector, sector)
                 else:
@@ -57,7 +55,6 @@ def get_info():
             app.logger.error(f"Error from scraper service. Status Code: {response.status_code}, Content: {response.text}")
             return jsonify({'error': 'Error from scraper service'}), response.status_code
         
-    # Convert sets to lists for JSON serialization
     for url, data in consolidated_results.items():
         if 'E-mails' in data:
             data['E-mails'] = list(data['E-mails'])
@@ -68,7 +65,6 @@ def get_info():
         if 'Locations' in data:
             data['Locations'] = list(data['Locations'])
             
-    # Convert the consolidated results to a list for the final response
     results_list = [{'url': url, **data} for url, data in consolidated_results.items()]
     return jsonify(results_list), 200
 

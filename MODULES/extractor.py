@@ -97,7 +97,7 @@ def extract_social_media_links(content, url):
 
 def extractor(scraped_content, url):
     extracted_info = {
-        config.emails: extract_email(scraped_content, url) or [],
+        config.emails: extract_email(scraped_content) or [],
         config.locations: extract_locations(scraped_content),
         config.phone_number: extract_phone_numbers(scraped_content) or [],
         config.socials: set(extract_social_media_links(scraped_content, url)),

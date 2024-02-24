@@ -28,7 +28,7 @@ def get_info():
                 if content:
                     company_name = extract_company_name(scraped_data['url']) 
                     sector = extract_sector(content)
-                    profile_data = extractor(content, scraped_data['url'])
+                    profile_data = extractor(content, scraped_data['url']       )
 
                     if 'E-mails' not in consolidated_results[url]:
                         consolidated_results[url]['E-mails'] = set()

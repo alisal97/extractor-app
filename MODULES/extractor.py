@@ -32,7 +32,7 @@ def extract_locations(text):
         output = nlp(chunk)
         city = ""
         for entity in output:
-            if entity['entity_group'] == "CITY" and entity['score'] >= 0.95:
+            if entity['entity_group'] == "CITY" and entity['score'] >= 0.978:
                 city = entity['word']
                 unique_cities.add(city)
     return list(unique_cities)

@@ -6,6 +6,15 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Auto
 import phonenumbers
 
 
+
+def extract_company_name(url):
+    company_name_regex = r'www\.([a-zA-Z0-9-]+)\.(eu|it|com|net|org|gov|edu|info|biz|co)'
+    match = re.search(company_name_regex, url)
+    if match:
+        return match.group(1)
+    else:
+        return None
+    
 def extract_email(content):
     email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
     emails = re.findall(email_regex, content)
@@ -23,10 +32,9 @@ def extract_locations(text):
         output = nlp(chunk)
         city = ""
         for entity in output:
-            if entity['entity_group'] == "CITY" and entity['score'] >= 0.99:
+            if entity['entity_group'] == "CITY" and entity['score'] >= 0.95:
                 city = entity['word']
                 unique_cities.add(city)
-    print(unique_cities)
     return list(unique_cities)
 
 def extract_phone_numbers(content):
@@ -69,30 +77,29 @@ def extract_sector(content):
 
     return predicted_sector
 
-def extract_company_name(url):
-    company_name_regex = r'www\.([a-zA-Z0-9-]+)\.(eu|it|com|net|org|gov|edu|info|biz|co)'
-    match = re.search(company_name_regex, url)
-    if match:
-        return match.group(1)
-    else:
-        return None
 
-def extract_social_media_links(content):
+
+def extract_social_media_links(content, url):
     social_media_links = set()
-
+    company_name = extract_company_name(url)
     pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+/[-\w./?=&]+'
     matches = re.findall(pattern, content)
-    for match in matches:
-        if 'facebook.com' in match or 'linkedin.com' in match or 'instagram.com' in match:
-            social_media_links.add(match)
-
+    if company_name != None: 
+        for match in matches:
+            if 'facebook.com' in match or 'linkedin.com' in match or 'instagram.com' in match:
+                if company_name.lower() in match.lower():
+                    social_media_links.add(match)
+    else: 
+        for match in matches:
+            if 'facebook.com' in match or 'linkedin.com' in match or 'instagram.com' in match:
+                social_media_links.add(match)
     return list(social_media_links)
 
-def extractor(scraped_content):
+def extractor(scraped_content, url):
     extracted_info = {
-        config.emails: extract_email(scraped_content) or [],
+        config.emails: extract_email(scraped_content, url) or [],
         config.locations: extract_locations(scraped_content),
         config.phone_number: extract_phone_numbers(scraped_content) or [],
-        config.socials: set(extract_social_media_links(scraped_content)),
+        config.socials: set(extract_social_media_links(scraped_content, url)),
     }
     return extracted_info
